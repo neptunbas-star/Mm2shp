@@ -10,14 +10,31 @@ from aiohttp import web
 
 TOKEN = "8904523107:AAEWjUe72LjE0allJ-42FIPW1I30DrKlctA"
 ADMIN_ID = 8875311417
-CARD_NUMBER = "4400430392570518"  # Карта обновлена
+CARD_NUMBER = "4400430392570518"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- ВЕБ-СЕРВЕР ДЛЯ RENDER ---
+# --- ТОВАРЫ ---
+goods = {
+    "Ножи": {
+        "Корупт": "2100tg", "Candy": "580tg", "Посох сердца": "1700tg",
+        "Лезвия сердце": "650tg", "Топор вампира": "2700tg", "Бита": "800tg", "Sweet": "1200tg"
+    },
+    "Пистолеты": {
+        "Raygun": "3500tg", "Снежная пушка": "2550tg", "Арбалет": "1600tg",
+        "Зимний арбалет": "1400tg", "Ватерган": "1500tg", "Buble": "2550tg"
+    },
+    "Сеты": {
+        "Rainbow set": "2700tg", "Sakura set": "4600tg", "Sunset": "3000tg",
+        "Flora set": "2700tg", "Дух сет": "2700tg", "Австралия сет": "850tg",
+        "Ляденой сет": "850tg", "Candy set": "800tg"
+    }
+}
+
+# --- ВЕБ-СЕРВЕР ---
 async def handle(request):
-    return web.Response(text="Бот работает")
+    return web.Response(text="Бот в сети")
 
 async def start_web_server():
     app = web.Application()
@@ -26,14 +43,8 @@ async def start_web_server():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
-# ------------------------------
 
-class AdminStates(StatesGroup):
-    waiting_for_item_name = State()
-    waiting_for_message = State()
-
-goods = {"Ножи": {}, "Пистолеты": {}, "Сеты": {}}
-
+# --- КНОПКИ И ЛОГИКА ---
 @dp.message(Command("start"))
 async def start(message: types.Message):
     kb = [[types.KeyboardButton(text="Ножи"), types.KeyboardButton(text="Пистолеты")],
@@ -43,16 +54,15 @@ async def start(message: types.Message):
 @dp.message(F.text.in_(["Ножи", "Пистолеты", "Сеты"]))
 async def show_category(message: types.Message):
     cat = message.text
-    if not goods[cat]:
-        await message.answer(f"В разделе {cat} пока пусто.")
-        return
-    kb = [[InlineKeyboardButton(text=f"{item} - {price}", callback_data=f"buy_{cat}_{item}")] for item, price in goods[cat].items()]
+    items = goods.get(cat, {})
+    kb = [[InlineKeyboardButton(text=f"{name} - {price}", callback_data=f"buy_{cat}_{name}")] for name, price in items.items()]
     await message.answer(f"Каталог - {cat}:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
 @dp.callback_query(F.data.startswith("buy_"))
 async def buy_item(callback: types.CallbackQuery):
     _, cat, item = callback.data.split("_")
-    await callback.message.answer(f"Вы выбрали: {item}\nОплатите на карту: `{CARD_NUMBER}`\nПосле оплаты пришлите скриншот чека в этот чат!")
+    price = goods[cat][item]
+    await callback.message.answer(f"Вы выбрали: {item} ({price})\nОплатите на карту: `{CARD_NUMBER}`\nПришлите скриншот чека сюда!")
 
 @dp.message(F.photo)
 async def handle_photo(message: types.Message):
@@ -61,15 +71,18 @@ async def handle_photo(message: types.Message):
          InlineKeyboardButton(text="❌ Отклонить", callback_data=f"decline_{message.from_user.id}")]
     ])
     await bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
-    await bot.send_message(ADMIN_ID, "Решение по чеку:", reply_markup=kb)
+    await bot.send_message(ADMIN_ID, f"Новый чек от @{message.from_user.username or message.from_user.id}", reply_markup=kb)
     await message.answer("Чек принят на проверку.")
 
 @dp.callback_query(F.data.startswith(("accept_", "decline_")))
 async def check_decision(callback: types.CallbackQuery):
     action, user_id = callback.data.split("_")
     status = "ПРИНЯТ ✅" if action == "accept" else "ОТКЛОНЕН ❌"
-    await bot.send_message(int(user_id), f"Ваш чек: {status}")
+    await bot.send_message(int(user_id), f"Ваш заказ: {status}")
     await callback.message.edit_text(f"Решение: {status}")
+
+# --- ОБРАТНАЯ СВЯЗЬ ---
+class AdminStates(StatesGroup): waiting_for_message = State()
 
 @dp.message(F.text == "Написать сообщение")
 async def contact_start(message: types.Message, state: FSMContext):
@@ -80,42 +93,6 @@ async def contact_start(message: types.Message, state: FSMContext):
 async def contact_process(message: types.Message, state: FSMContext):
     await bot.forward_message(ADMIN_ID, message.chat.id, message.message_id)
     await message.answer("Сообщение отправлено!")
-    await state.clear()
-
-@dp.message(F.chat.id == ADMIN_ID, F.reply_to_message)
-async def reply_to_user(message: types.Message):
-    user_id = message.reply_to_message.forward_from.id
-    await bot.send_message(user_id, f"Ответ Sweet Shop: {message.text}")
-    await message.answer("Ответ отправлен.")
-
-@dp.message(Command("admin"))
-async def admin(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        kb = [[types.KeyboardButton(text="Добавить товар"), types.KeyboardButton(text="Удалить товар")]]
-        await message.answer("Админка:", reply_markup=types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True))
-
-@dp.message(F.text == "Добавить товар")
-async def add_item_menu(message: types.Message):
-    kb = [[types.KeyboardButton(text="В Ножи"), types.KeyboardButton(text="В Пистолеты"), types.KeyboardButton(text="В Сеты")]]
-    await message.answer("Куда добавляем?", reply_markup=types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True))
-
-@dp.message(F.text.startswith("В "))
-async def add_item_step1(message: types.Message, state: FSMContext):
-    cat = message.text.replace("В ", "")
-    await state.update_data(category=cat)
-    await state.set_state(AdminStates.waiting_for_item_name)
-    await message.answer(f"Напиши Название-Цена:")
-
-@dp.message(AdminStates.waiting_for_item_name)
-async def add_item_step2(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    cat = data['category']
-    try:
-        name, price = message.text.split("-")
-        goods[cat][name.strip()] = price.strip()
-        await message.answer(f"Товар {name} добавлен в {cat}!")
-    except:
-        await message.answer("Ошибка формата! (Нужно: Название-Цена)")
     await state.clear()
 
 async def main():
