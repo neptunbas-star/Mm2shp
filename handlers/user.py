@@ -1,46 +1,92 @@
-from aiogram import Router, F, Bot
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.filters import Command
 from config import ADMIN_ID
 
 router = Router()
 
-class Payment(StatesGroup):
-    waiting_for_check = State()
+# Класс состояний
+class OrderForm(StatesGroup):
+    waiting_for_piar_count = State()
+    waiting_for_admin_weeks = State()
+    waiting_for_receipt = State()
 
-@router.message(Command("start"))
-async def start_cmd(message: Message):
-    kb = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="⚔️ MM2"), KeyboardButton(text="👑 Прайс админки")],
-        [KeyboardButton(text="📢 Пиар прайс"), KeyboardButton(text="⭐ Отзывы")]
-    ], resize_keyboard=True)
-    await message.answer("Привет! Добро пожаловать в Qwerty shop.", reply_markup=kb)
+# Клавиатура
+admin_kb = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text="➕ Добавить товар"), KeyboardButton(text="➖ Убрать товар")],
+    [KeyboardButton(text="ММ2"), KeyboardButton(text="Пиар прайс")],
+    [KeyboardButton(text="Админки"), KeyboardButton(text="Отзывы")]
+], resize_keyboard=True)
 
-@router.message(F.text == "⭐ Отзывы")
-async def show_reviews(message: Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Перейти к отзывам", url="https://t.me/rishaproofsss")]])
-    await message.answer("Наши отзывы:", reply_markup=kb)
-
-# Логика оплаты для разделов (MM2, Пиар прайс, Прайс админки)
-@router.message(F.text.in_({"⚔️ MM2", "👑 Прайс админки", "📢 Пиар прайс"}))
-async def payment_info(message: Message, state: FSMContext):
-    await message.answer(
-        "💳 **Оплата Каспи**\n"
-        "Номер: `4400430392570518`\n"
-        "Имя: Индира А\n\n"
-        "Отправьте фото или скриншот чека прямо сюда.", parse_mode="Markdown"
-    )
-    await state.set_state(Payment.waiting_for_check)
-
-@router.message(Payment.waiting_for_check, F.photo)
-async def handle_check(message: Message, state: FSMContext, bot: Bot):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Принять", callback_data=f"accept_{message.from_user.id}")],
-        [InlineKeyboardButton(text="❌ Отклонить", callback_data=f"decline_{message.from_user.id}")]
-    ])
-    await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, 
-                         caption=f"📩 Новый чек от @{message.from_user.username or 'неизвестен'}", reply_markup=kb)
-    await message.answer("✅ Чек отправлен на проверку!")
+# 1. ОБРАБОТКА ЧЕКА (Фото или Документ)
+@router.message(OrderForm.waiting_for_receipt, F.photo | F.document)
+async def process_receipt(message: Message, state: FSMContext):
+    await message.answer("✅ Чек принят на проверку. Владелец скоро свяжется!")
     await state.clear()
+
+# 2. ПИАР ПРАЙС
+@router.message(F.text == "Пиар прайс")
+async def show_piar(message: Message):
+    text = "🔥 Пиар Курс 8: от 15 до 75 участников.\nЦена: 8 тг за 1 уч.\nКанал: @Qwerty5Shop"
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Купить", callback_data="buy_piar")]])
+    await message.answer(text, reply_markup=kb)
+
+@router.callback_query(F.data == "buy_piar")
+async def ask_piar_count(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите количество человек (15-75):")
+    await state.set_state(OrderForm.waiting_for_piar_count)
+
+@router.message(OrderForm.waiting_for_piar_count)
+async def calc_piar(message: Message, state: FSMContext):
+    try:
+        count = int(message.text)
+        if 15 <= count <= 75:
+            price = count * 8
+            await state.update_data(price=price)
+            kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Оплатить", callback_data="show_req")]])
+            await message.answer(f"Выйдет {price} тенге. Нажмите кнопку:", reply_markup=kb)
+        else:
+            await message.answer("Пожалуйста, введите число от 15 до 75.")
+    except:
+        await message.answer("Введите корректное число.")
+
+# 3. АДМИНКИ
+@router.message(F.text == "Админки")
+async def show_admin_price(message: Message):
+    text = "👑 Админки: 1 нед (200тг), 2 нед (400тг), 3 нед (600тг), Месяц (900тг)."
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Купить", callback_data="buy_admin")]])
+    await message.answer(text, reply_markup=kb)
+
+@router.callback_query(F.data == "buy_admin")
+async def ask_admin_weeks(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите срок (1 неделя, 2 недели, 3 недели или Месяц):")
+    await state.set_state(OrderForm.waiting_for_admin_weeks)
+
+@router.message(OrderForm.waiting_for_admin_weeks)
+async def calc_admin(message: Message, state: FSMContext):
+    text = message.text.lower()
+    prices = {"1 неделя": 200, "2 недели": 400, "3 недели": 600, "месяц": 900}
+    if text in prices:
+        price = prices[text]
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Оплатить", callback_data="show_req")]])
+        await message.answer(f"Выйдет {price} тенге. Нажмите кнопку:", reply_markup=kb)
+    else:
+        await message.answer("Введите корректно: 1 неделя, 2 недели, 3 недели или Месяц.")
+
+# 4. РЕКВИЗИТЫ И ФИНАЛ
+@router.callback_query(F.data == "show_req")
+async def show_requisites(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("💳 Kaspi: 4400430392570518 (Индира А)\n\nПришлите чек или документ:")
+    await state.set_state(OrderForm.waiting_for_receipt)
+
+# 5. КНОПКИ
+@router.message(F.text == "ММ2")
+async def show_mm2(message: Message):
+    await message.answer("Раздел ММ2 в разработке.")
+
+@router.message(Command("admin"))
+async def admin_panel(message: Message):
+    if message.from_user.id == ADMIN_ID:
+        await message.answer("Админ-панель открыта:", reply_markup=admin_kb)
