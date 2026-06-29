@@ -1,7 +1,7 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 from config import TOKEN
-from handlers import user
+from handlers import user, admin
 from aiohttp import web
 
 async def handle(request): return web.Response(text="Бот в сети")
