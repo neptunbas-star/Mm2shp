@@ -1,27 +1,20 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
+from config import ADMIN_ID
 
 router = Router()
 
-@router.message(Command("start"))
-async def start_cmd(message: Message):
-    kb = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="🗡 ММ2"), KeyboardButton(text="👑 Прайс админки")],
-        [KeyboardButton(text="📢 Пиар прайс"), KeyboardButton(text="📞 Связь с владельцем")],
-        [KeyboardButton(text="⭐ Отзывы")]
-    ], resize_keyboard=True)
-    await message.answer("👋 Добро пожаловать в Qwerty Shop!\n\nВыберите нужный раздел ниже.", reply_markup=kb)
-
-@router.message(F.text == "⭐ Отзывы")
-async def show_reviews(message: Message):
+@router.message(Command("admin"))
+async def admin_panel(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return await message.answer("У вас нет доступа.")
+    
+    # Создаем кнопки
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Перейти к отзывам", url="https://t.me/rishaproofsss")]
+        [InlineKeyboardButton(text="📦 Управление товарами", callback_data="manage_products")],
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+        [InlineKeyboardButton(text="📨 Рассылка", callback_data="broadcast")]
     ])
-    await message.answer("Наши отзывы:", reply_markup=kb)
-
-@router.message(F.text == "📞 Связь с владельцем")
-async def contact_admin(message: Message, state: FSMContext):
-    await state.set_state("waiting_for_message")
-    await message.answer("Напишите ваше сообщение владельцу.")
+    
+    await message.answer("🛠 Админ-панель Qwerty Shop. Выберите действие:", reply_markup=kb)
