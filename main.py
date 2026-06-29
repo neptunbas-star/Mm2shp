@@ -18,7 +18,8 @@ async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
     dp.include_router(user.router)
-    
+    dp.include_router(admin.router) # Добавь эту строку
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
