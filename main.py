@@ -3,6 +3,8 @@ from aiogram import Bot, Dispatcher
 from config import TOKEN
 from handlers import user, admin
 from aiohttp import web
+from database import init_db
+
 
 async def handle(request): return web.Response(text="Бот в сети")
 
@@ -14,6 +16,7 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 8080)
     await site.start()
+    await init_db()
 
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
