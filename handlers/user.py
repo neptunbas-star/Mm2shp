@@ -1,20 +1,23 @@
 from aiogram import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
 from config import ADMIN_ID
 
 router = Router()
 
-@router.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return await message.answer("У вас нет доступа.")
-    
-    # Создаем кнопки
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📦 Управление товарами", callback_data="manage_products")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton(text="📨 Рассылка", callback_data="broadcast")]
-    ])
-    
-    await message.answer("🛠 Админ-панель Qwerty Shop. Выберите действие:", reply_markup=kb)
+# ... твой текущий код (start и другие) ...
+
+@router.message(F.text == "📞 Связь с владельцем")
+async def contact_admin(message: Message, state: FSMContext):
+    await state.set_state("waiting_for_message")
+    await message.answer("Напишите ваше сообщение владельцу.")
+
+# Добавь этот блок:
+@router.message(F.text, State("waiting_for_message"))
+async def send_to_admin(message: Message, state: FSMContext):
+    await message.bot.send_message(
+        ADMIN_ID, 
+        f"📩 Новое сообщение от @{message.from_user.username} (ID: {message.from_user.id}):\n\n{message.text}"
+    )
+    await message.answer("✅ Ваше сообщение отправлено владельцу!")
+    await state.clear()
