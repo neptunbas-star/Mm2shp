@@ -1,38 +1,38 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State
+from aiogram.fsm.state import State, StatesGroup
 from config import ADMIN_ID
 
 router = Router()
 
-# 1. Приветствие и кнопки
+class BuyState(StatesGroup):
+    waiting_for_check = State()
+
 @router.message(Command("start"))
-async def start_cmd(message: Message):
+async def start(message: Message):
     kb = ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="⚔️ MM2"), KeyboardButton(text="👑 Прайс админки")],
-        [KeyboardButton(text="📢 Пиар прайс"), KeyboardButton(text="📞 Связь с владельцем")],
-        [KeyboardButton(text="⭐ Отзывы")]
+        [KeyboardButton(text="📢 Пиар прайс"), KeyboardButton(text="⭐ Отзывы")]
     ], resize_keyboard=True)
-    await message.answer("Привет! Добро пожаловать в Qwerty shop.", reply_markup=kb)
+    await message.answer("Привет! Выберите раздел:", reply_markup=kb)
 
-# 2. Кнопка "Отзывы"
 @router.message(F.text == "⭐ Отзывы")
-async def show_reviews(message: Message):
-    await message.answer("Наши отзывы: https://t.me/ссылка_на_отзывы")
+async def reviews(message: Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Перейти к отзывам", url="https://t.me/rishaproofsss")]])
+    await message.answer("Наши отзывы:", reply_markup=kb)
 
-# 3. Связь с владельцем (логика)
-@router.message(F.text == "📞 Связь с владельцем")
-async def contact_admin(message: Message, state: FSMContext):
-    await state.set_state("waiting_for_message")
-    await message.answer("Напишите ваше сообщение владельцу:")
+# Пример покупки
+@router.message(F.text == "⚔️ MM2")
+async def buy_mm2(message: Message, state: FSMContext):
+    await message.answer(f"Реквизиты для оплаты (Каспи):\n4400430392570518 (Имя: Индира А)\n\nОтправьте скриншот чека в этот чат.")
+    await state.set_state(BuyState.waiting_for_check)
 
-@router.message(F.text, State("waiting_for_message"))
-async def send_to_admin(message: Message, state: FSMContext):
-    await message.bot.send_message(
-        ADMIN_ID, 
-        f"📩 Сообщение от @{message.from_user.username}:\n\n{message.text}"
-    )
-    await message.answer("✅ Сообщение отправлено владельцу!")
+@router.message(BuyState.waiting_for_check, F.photo)
+async def get_check(message: Message, state: FSMContext):
+    # Пересылка чека админу
+    await message.bot.send_photo(ADMIN_ID, message.photo[-1].file_id, 
+                                 caption=f"📩 Новый чек от @{message.from_user.username}\nID пользователя: {message.from_user.id}")
+    await message.answer("✅ Чек отправлен на проверку!")
     await state.clear()
