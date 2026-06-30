@@ -1,22 +1,28 @@
 import aiosqlite
 
-async def init_db():
-    async with aiosqlite.connect("shop.db") as db:
+DB_NAME = "shop.db"
+
+async def create_db():
+    async with aiosqlite.connect(DB_NAME) as db:
+
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                price TEXT
-            )
+        CREATE TABLE IF NOT EXISTS products(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            name TEXT,
+            price INTEGER
+        )
         """)
-        await db.commit()
 
-async def add_product(name, price):
-    async with aiosqlite.connect("shop.db") as db:
-        await db.execute("INSERT INTO products (name, price) VALUES (?, ?)", (name, price))
-        await db.commit()
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS orders(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            product_name TEXT,
+            price INTEGER,
+            status TEXT
+        )
+        """)
 
-async def get_products():
-    async with aiosqlite.connect("shop.db") as db:
-        cursor = await db.execute("SELECT name, price FROM products")
-        return await cursor.fetchall()
+        await db.commit()
