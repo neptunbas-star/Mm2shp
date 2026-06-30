@@ -1,27 +1,61 @@
-from aiogram import Router
-from aiogram.types import Message
+from aiogram import Router, F
+from aiogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
+
 from config import ADMIN_ID
 
 router = Router()
 
-CARD = """💳 Реквизиты
 
-4400430392570518
+def admin_buttons(user_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✅ Принять",
+                    callback_data=f"accept_{user_id}"
+                ),
+                InlineKeyboardButton(
+                    text="❌ Отклонить",
+                    callback_data=f"reject_{user_id}"
+                )
+            ]
+        ]
+    )
 
-Получатель:
-Индира А
 
-Банк:
-Kaspi
+@router.message(F.photo | F.document)
+async def check(message: Message):
 
-После оплаты отправьте фото или документ с чеком.
+    text = f"""
+🧾 Новый чек
+
+👤 Пользователь:
+@{message.from_user.username}
+
+🆔 ID:
+{message.from_user.id}
 """
 
-@router.message(lambda m: m.photo or m.document)
-async def check(message: Message):
-    await message.forward(ADMIN_ID)
+    if message.photo:
+        await message.bot.send_photo(
+            ADMIN_ID,
+            photo=message.photo[-1].file_id,
+            caption=text,
+            reply_markup=admin_buttons(message.from_user.id)
+        )
+
+    elif message.document:
+        await message.bot.send_document(
+            ADMIN_ID,
+            document=message.document.file_id,
+            caption=text,
+            reply_markup=admin_buttons(message.from_user.id)
+        )
 
     await message.answer(
-        "✅ Чек отправлен.\n\n"
-        "Ожидайте проверки администратора."
+        "✅ Чек отправлен.\n\nОжидайте проверки администратора."
     )
