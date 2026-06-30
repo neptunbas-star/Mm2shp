@@ -109,3 +109,8 @@ async def all_products(message: Message):
         text += "\n"
 
     await message.answer(text)
+    
+
+@router.message(lambda m: m.text == "🗑️ Удалить товар")
+async def delete(message: Message):
+    await message.answer("Введите ID товара для удаления:")
