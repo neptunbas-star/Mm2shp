@@ -59,3 +59,34 @@ async def check(message: Message):
     await message.answer(
         "✅ Чек отправлен.\n\nОжидайте проверки администратора."
     )
+
+from aiogram.types import CallbackQuery
+
+
+@router.callback_query(F.data.startswith("accept_"))
+async def accept(callback: CallbackQuery):
+
+    user = int(callback.data.split("_")[1])
+
+    await callback.bot.send_message(
+        user,
+        "✅ Ваш чек принят!\n\n"
+        "Скоро владелец свяжется с вами для выдачи товара.\n\n"
+        "Спасибо за покупку ❤️"
+    )
+
+    await callback.message.edit_reply_markup()
+
+
+@router.callback_query(F.data.startswith("reject_"))
+async def reject(callback: CallbackQuery):
+
+    user = int(callback.data.split("_")[1])
+
+    await callback.bot.send_message(
+        user,
+        "❌ Ваш чек отклонён.\n\n"
+        "Отправьте более качественный чек."
+    )
+
+    await callback.message.edit_reply_markup()
