@@ -1,6 +1,8 @@
 from aiogram import Router
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
+from database import get_products
+
 router = Router()
 
 buy = InlineKeyboardMarkup(
@@ -17,31 +19,50 @@ buy = InlineKeyboardMarkup(
 
 @router.message(lambda m: m.text == "🛒 MM2 Прайс")
 async def mm2(message: Message):
-    await message.answer(
-        """🛒 MM2
 
-Пока товаров нет.
+    products = await get_products("MM2")
 
-Позже они будут отображаться здесь автоматически.""",
-        reply_markup=buy
-    )
+    if not products:
+        await message.answer("❌ Пока товаров нет.")
+        return
+
+    text = "🛒 MM2 Прайс\n\n"
+
+    for product in products:
+        text += f"📦 {product[1]}\n💰 {product[2]}₸\n\n"
+
+    await message.answer(text, reply_markup=buy)
 
 
 @router.message(lambda m: m.text == "👑 Админ Прайс")
-async def admin(message: Message):
-    await message.answer(
-        """👑 Админ Прайс
+async def admin_price(message: Message):
 
-Пока товаров нет.""",
-        reply_markup=buy
-    )
+    products = await get_products("Админ")
+
+    if not products:
+        await message.answer("❌ Пока товаров нет.")
+        return
+
+    text = "👑 Админ Прайс\n\n"
+
+    for product in products:
+        text += f"📦 {product[1]}\n💰 {product[2]}₸\n\n"
+
+    await message.answer(text, reply_markup=buy)
 
 
 @router.message(lambda m: m.text == "📢 Пиар Прайс")
 async def promo(message: Message):
-    await message.answer(
-        """📢 Пиар Прайс
 
-Пока услуг нет.""",
-        reply_markup=buy
-    )
+    products = await get_products("Пиар")
+
+    if not products:
+        await message.answer("❌ Пока услуг нет.")
+        return
+
+    text = "📢 Пиар Прайс\n\n"
+
+    for product in products:
+        text += f"📦 {product[1]}\n💰 {product[2]}₸\n\n"
+
+    await message.answer(text, reply_markup=buy)
