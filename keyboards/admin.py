@@ -5,7 +5,7 @@ admin_menu = ReplyKeyboardMarkup(
         [KeyboardButton(text="➕ Добавить товар")],
         [KeyboardButton(text="🗑️ Удалить товар")],
         [KeyboardButton(text="✏️ Изменить цену")],
-        [KeyboardButton(text="📦 Список товаров")],
+        [KeyboardButton(text="📋 Все товары")],
         [KeyboardButton(text="🏠 Главное меню")]
     ],
     resize_keyboard=True
