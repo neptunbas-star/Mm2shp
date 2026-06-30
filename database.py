@@ -43,3 +43,11 @@ async def get_products(category):
             (category,)
         )
         return await cursor.fetchall()
+
+async def delete_product(product_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "DELETE FROM products WHERE id=?",
+            (product_id,)
+        )
+        await db.commit()
