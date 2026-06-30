@@ -2,16 +2,20 @@ from aiogram import Router
 from aiogram.types import Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from database import add_product
+
+from database import add_product, get_products
 from config import ADMIN_ID
 from keyboards.admin import admin_menu
+from keyboards.menu import menu
 
 router = Router()
+
 
 class AddProduct(StatesGroup):
     category = State()
     name = State()
     price = State()
+
 
 @router.message(lambda m: m.text == "/admin")
 async def admin_panel(message: Message):
@@ -23,7 +27,8 @@ async def admin_panel(message: Message):
         "👑 Добро пожаловать в админ-панель!",
         reply_markup=admin_menu
     )
-    
+
+
 @router.message(lambda m: m.text == "➕ Добавить товар")
 async def add_start(message: Message, state: FSMContext):
 
@@ -71,3 +76,35 @@ async def price(message: Message, state: FSMContext):
     await message.answer("✅ Товар успешно добавлен!")
 
     await state.clear()
+
+
+@router.message(lambda m: m.text == "🏠 Главное меню")
+async def home(message: Message):
+
+    await message.answer(
+        "🏠 Главное меню",
+        reply_markup=menu
+    )
+
+
+@router.message(lambda m: m.text == "📋 Все товары")
+async def all_products(message: Message):
+
+    text = "📋 Все товары\n\n"
+
+    for category in ["MM2", "Админ", "Пиар"]:
+
+        products = await get_products(category)
+
+        text += f"📂 {category}\n"
+
+        if not products:
+            text += "Нет товаров\n\n"
+            continue
+
+        for product in products:
+            text += f"🆔 {product[0]} | {product[1]} — {product[2]}₸\n"
+
+        text += "\n"
+
+    await message.answer(text)
