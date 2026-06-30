@@ -1,17 +1,19 @@
-import asyncio
 from aiogram import Bot, Dispatcher
-from handlers import user
+import asyncio
 
-# Твой токен внедрен сюда
-TOKEN = "8744469494:AAE7U5sYSBv8K60ln9aLjPDiO3FgKzOcZ_A"
+# Импортируем токен из твоего файла config.py
+from config import BOT_TOKEN
+
+# Инициализируем бота и диспетчер
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+# Здесь позже будем подключать роутеры (handlers)
+# dp.include_router(user.router)
 
 async def main():
-    bot = Bot(token=TOKEN)
-    dp = Dispatcher()
-    
-    dp.include_router(user.router)
-    
-    print("Бот успешно запущен и готов к работе!")
+    print("Бот успешно запущен!")
+    # Запуск процесса опроса (polling)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
