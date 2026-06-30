@@ -7,6 +7,7 @@ from database import add_product, get_products
 from config import ADMIN_ID
 from keyboards.admin import admin_menu
 from keyboards.menu import menu
+from database import delete_product
 
 router = Router()
 
